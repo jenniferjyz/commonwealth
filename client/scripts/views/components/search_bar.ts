@@ -18,7 +18,6 @@ import MarkdownFormattedText from './markdown_formatted_text';
 import QuillFormattedText from './quill_formatted_text';
 import { CommunityLabel } from './sidebar/community_selector';
 import User, { UserBlock } from './widgets/user';
-import { ALL_RESULTS_KEY } from '../pages/search';
 import { ChainIcon, CommunityIcon } from './chain_icon';
 
 export interface SearchParams {
@@ -231,13 +230,13 @@ const getResultsPreview = (searchTerm: string, state, params: SearchParams) => {
   const { communityScope, chainScope, isHomepageSearch } = params;
   if (communityScope || chainScope) {
     types = [SearchType.Discussion, SearchType.Member];
-    results = getBalancedContentListing(app.searchCache[searchTerm], types);
+    results = getBalancedContentListing(app.searchCache.getKey(searchTerm), types);
   } else if (isHomepageSearch) {
     types = [SearchType.Community];
-    results = getBalancedContentListing(app.searchCache[searchTerm], types);
+    results = getBalancedContentListing(app.searchCache.getKey(searchTerm), types);
   } else {
     types = [SearchType.Discussion, SearchType.Member, SearchType.Community];
-    results = getBalancedContentListing(app.searchCache[searchTerm], types);
+    results = getBalancedContentListing(app.searchCache.getKey(searchTerm), types);
   }
   const organizedResults = [];
   let tabIndex = 1;
@@ -269,8 +268,8 @@ const getResultsPreview = (searchTerm: string, state, params: SearchParams) => {
 };
 
 const concludeSearch = (searchTerm: string, params: SearchParams, state, err?) => {
-  if (!app.searchCache[searchTerm].loaded) {
-    app.searchCache[searchTerm].loaded = true;
+  if (!app.searchCache.getKey(searchTerm).loaded) {
+    app.searchCache.getKey(searchTerm).loaded = true;
   }
   if (err) {
     state.results = {};
@@ -278,7 +277,7 @@ const concludeSearch = (searchTerm: string, params: SearchParams, state, err?) =
   } else {
     state.results = params.isSearchPreview
       ? getResultsPreview(searchTerm, state, params)
-      : app.searchCache[searchTerm];
+      : app.searchCache.getKey(searchTerm);
   }
   m.redraw();
 };
@@ -292,7 +291,7 @@ export const search = async (searchTerm: string, params: SearchParams, state) =>
   const { isSearchPreview, isHomepageSearch, communityScope, chainScope } = params;
   const resultSize = isSearchPreview ? SEARCH_PREVIEW_SIZE : SEARCH_PAGE_SIZE;
 
-  if (app.searchCache[searchTerm]?.loaded) {
+  if (app.searchCache.getKey(searchTerm)?.loaded) {
     // If results exist in cache, conclude search
     concludeSearch(searchTerm, params, state);
   }
@@ -303,13 +302,13 @@ export const search = async (searchTerm: string, params: SearchParams, state) =>
         searchMentionableAddresses(searchTerm, { resultSize, communityScope, chainScope }, ['created_at', 'DESC'])
       ]);
 
-      app.searchCache[searchTerm][SearchType.Discussion] = discussions.map((discussion) => {
+      app.searchCache.getKey(searchTerm)[SearchType.Discussion] = discussions.map((discussion) => {
         discussion.contentType = discussion.root_id ? ContentType.Comment : ContentType.Thread;
         discussion.searchType = SearchType.Discussion;
         return discussion;
       }).sort(sortResults);
 
-      app.searchCache[searchTerm][SearchType.Member] = addrs.map((addr) => {
+      app.searchCache.getKey(searchTerm)[SearchType.Member] = addrs.map((addr) => {
         addr.contentType = ContentType.Member;
         addr.searchType = SearchType.Member;
         return addr;
@@ -321,15 +320,15 @@ export const search = async (searchTerm: string, params: SearchParams, state) =>
       }
     }
 
-    const unfilteredTokens = app.searchCache[ALL_RESULTS_KEY]['tokens'];
+    const unfilteredTokens = app.searchCache.allResults['tokens'];
     const tokens = unfilteredTokens.filter((token) => token.name?.toLowerCase().includes(searchTerm));
-    app.searchCache[searchTerm][SearchType.Community] = tokens.map((token) => {
+    app.searchCache.getKey(searchTerm)[SearchType.Community] = tokens.map((token) => {
       token.contentType = ContentType.Token;
       token.searchType = SearchType.Community;
       return token;
     });
 
-    const allComms = app.searchCache[ALL_RESULTS_KEY]['communities'];
+    const allComms = app.searchCache.allResults['communities'];
     const filteredComms = allComms.filter((comm) => {
       return comm.name?.toLowerCase().includes(searchTerm)
         || comm.symbol?.toLowerCase().includes(searchTerm);
@@ -350,8 +349,8 @@ export const search = async (searchTerm: string, params: SearchParams, state) =>
 export const initializeSearch = async () => {
   // Pre-queries communities and tokens. Future searches merely filter from cached list,
   // to prevent unnecessary backend requests
-  if (!app.searchCache[ALL_RESULTS_KEY]?.loaded) {
-    app.searchCache[ALL_RESULTS_KEY] = {};
+  if (!app.searchCache.allResults?.loaded) {
+    app.searchCache.resetAllResults();
     try {
       const getTokens = () => $.getJSON('/api/getTokensFromLists')
         .then((response) => {
@@ -362,13 +361,13 @@ export const initializeSearch = async () => {
           }
         });
       const [tokens, comms] = await Promise.all([getTokens(), searchChainsAndCommunities()]);
-      app.searchCache[ALL_RESULTS_KEY]['tokens'] = tokens;
-      app.searchCache[ALL_RESULTS_KEY]['communities'] = comms;
+      app.searchCache.allResults['tokens'] = tokens;
+      app.searchCache.allResults['communities'] = comms;
     } catch (err) {
-      app.searchCache[ALL_RESULTS_KEY]['tokens'] = [];
-      app.searchCache[ALL_RESULTS_KEY]['communities'] = [];
+      app.searchCache.allResults['tokens'] = [];
+      app.searchCache.allResults['communities'] = [];
     }
-    app.searchCache[ALL_RESULTS_KEY].loaded = true;
+    app.searchCache.allResults.loaded = true;
     m.redraw();
   }
 };
@@ -416,7 +415,7 @@ export const SearchBar : m.Component<{}, {
       class: 'search-results-loading'
     }, [ m(ListItem, { label: m(Spinner, { active: true }) }) ]);
     const searchResults = (!results || results?.length === 0)
-      ? (app.searchCache[searchTerm]?.loaded)
+      ? (app.searchCache.isLoaded(searchTerm))
         ? m(List, [ m(emptySearchPreview, { searchTerm }) ])
         : LoadingPreview
       : vnode.state.isTyping
@@ -470,8 +469,8 @@ export const SearchBar : m.Component<{}, {
           if (vnode.state.hideResults) {
             vnode.state.hideResults = false;
           }
-          if (!app.searchCache[vnode.state.searchTerm]) {
-            app.searchCache[vnode.state.searchTerm] = { loaded: false };
+          if (!app.searchCache.getKey(vnode.state.searchTerm)) {
+            app.searchCache.initKey(vnode.state.searchTerm);
           }
           if (e.target.value?.length > 3) {
             const params: SearchParams = {
@@ -497,8 +496,8 @@ export const SearchBar : m.Component<{}, {
             if (searchTerm.length < 4) {
               notifyError('Query must be at least 4 characters');
             }
-            if (app.searchCache[searchTerm]?.loaded) {
-              app.searchCache[searchTerm].loaded = false;
+            if (app.searchCache.isLoaded(searchTerm)) {
+              app.searchCache.initKey(searchTerm);
             }
             let params = `q=${encodeURIComponent(vnode.state.searchTerm.toString().trim())}`;
             if (app.activeCommunityId()) params += `&comm=${app.activeCommunityId()}`;
