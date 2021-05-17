@@ -15,6 +15,9 @@ class SearchCacheController {
   public initKey(key: string) {
     this._cache[key] = { loaded: false };
   }
+  public isLoaded(key: string) {
+    return !!this._cache[key]?.loaded;
+  }
 }
 
 export default SearchCacheController;

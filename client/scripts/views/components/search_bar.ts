@@ -233,7 +233,7 @@ const getResultsPreview = (searchTerm: string, state, params: SearchParams) => {
     results = getBalancedContentListing(app.searchCache.getKey(searchTerm), types);
   } else if (isHomepageSearch) {
     types = [SearchType.Community];
-    results = getBalancedContentListing(app.searchCache[searchTerm], types);
+    results = getBalancedContentListing(app.searchCache.getKey(searchTerm), types);
   } else {
     types = [SearchType.Discussion, SearchType.Member, SearchType.Community];
     results = getBalancedContentListing(app.searchCache.getKey(searchTerm), types);
@@ -415,7 +415,7 @@ export const SearchBar : m.Component<{}, {
       class: 'search-results-loading'
     }, [ m(ListItem, { label: m(Spinner, { active: true }) }) ]);
     const searchResults = (!results || results?.length === 0)
-      ? (app.searchCache[searchTerm]?.loaded)
+      ? (app.searchCache.isLoaded(searchTerm))
         ? m(List, [ m(emptySearchPreview, { searchTerm }) ])
         : LoadingPreview
       : vnode.state.isTyping
@@ -469,8 +469,8 @@ export const SearchBar : m.Component<{}, {
           if (vnode.state.hideResults) {
             vnode.state.hideResults = false;
           }
-          if (!app.searchCache[vnode.state.searchTerm]) {
-            app.searchCache[vnode.state.searchTerm] = { loaded: false };
+          if (!app.searchCache.getKey(vnode.state.searchTerm)) {
+            app.searchCache.initKey(vnode.state.searchTerm);
           }
           if (e.target.value?.length > 3) {
             const params: SearchParams = {
@@ -496,8 +496,8 @@ export const SearchBar : m.Component<{}, {
             if (searchTerm.length < 4) {
               notifyError('Query must be at least 4 characters');
             }
-            if (app.searchCache[searchTerm]?.loaded) {
-              app.searchCache[searchTerm].loaded = false;
+            if (app.searchCache.isLoaded(searchTerm)) {
+              app.searchCache.initKey(searchTerm);
             }
             let params = `q=${encodeURIComponent(vnode.state.searchTerm.toString().trim())}`;
             if (app.activeCommunityId()) params += `&comm=${app.activeCommunityId()}`;
