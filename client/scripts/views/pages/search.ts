@@ -19,12 +19,10 @@ import MarkdownFormattedText from 'views/components/markdown_formatted_text';
 import User, { UserBlock } from 'views/components/widgets/user';
 import Sublayout from 'views/sublayout';
 import PageLoading from 'views/pages/loading';
-import { CommunityLabel } from '../components/sidebar/community_selector';
-import PageNotFound from './404';
-import { ContentType, initializeSearch, search, SearchType } from '../components/search_bar';
-
-export const ALL_RESULTS_KEY = 'COMMONWEALTH_ALL_RESULTS';
-const SEARCH_PAGE_SIZE = 50; // must be same as SQL limit specified in the database query
+import { CommunityLabel } from 'views/components/sidebar/community_selector';
+import PageNotFound from 'views/pages/404';
+import { ContentType, initializeSearch, search, SearchType } from 'views/components/search_bar';
+import SearchCacheController from 'controllers/server/search_cache';
 
 export const getMemberResult = (addr, searchTerm) => {
   const profile: Profile = app.profiles.getProfile(addr.chain, addr.address);
@@ -225,7 +223,7 @@ const SearchPage : m.Component<{
       });
     }
 
-    if (!app.searchCache[ALL_RESULTS_KEY]?.loaded) {
+    if (!app.searchCache.allResults.loaded) {
       return LoadingPage;
     }
 
@@ -234,14 +232,14 @@ const SearchPage : m.Component<{
       vnode.state.searchTerm = searchTerm;
       vnode.state.refreshResults = false;
       vnode.state.results = {};
-      if (!app.searchCache[vnode.state.searchTerm]) {
-        app.searchCache[vnode.state.searchTerm] = { loaded: false };
+      if (!app.searchCache.getKey(vnode.state.searchTerm)) {
+        app.searchCache.initKey(vnode.state.searchTerm);
       }
       search(searchTerm, { communityScope, chainScope }, vnode.state);
       return LoadingPage;
     }
 
-    if (!app.searchCache[searchTerm].loaded) {
+    if (!app.searchCache.getKey(searchTerm).loaded) {
       return LoadingPage;
     }
 
@@ -256,10 +254,10 @@ const SearchPage : m.Component<{
 
     const tabScopedListing = getListing(results, searchTerm, pageCount, activeTab);
     const resultCount = activeTab === SearchType.Top
-      ? tabScopedListing.length === SEARCH_PAGE_SIZE
+      ? tabScopedListing.length === SearchCacheController.SEARCH_PAGE_SIZE
         ? `${tabScopedListing.length}+ results`
         : pluralize(tabScopedListing.length, 'result')
-      : tabScopedListing.length === SEARCH_PAGE_SIZE
+      : tabScopedListing.length === SearchCacheController.SEARCH_PAGE_SIZE
         ? `${tabScopedListing.length}+ ${capitalize(activeTab)} results`
         : pluralize(tabScopedListing.length, `${capitalize(activeTab)} result`);
 
@@ -308,7 +306,7 @@ const SearchPage : m.Component<{
       }),
     ]),
     m('.search-results-wrapper', [
-      !app.searchCache[searchTerm].loaded ? m('.search-loading', [
+      !app.searchCache.getKey(searchTerm).loaded ? m('.search-loading', [
         m(Spinner, {
           active: true,
           fill: true,

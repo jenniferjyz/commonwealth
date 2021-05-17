@@ -17,6 +17,7 @@ import WebsocketController from './controllers/server/socket';
 import TopicsController from './controllers/server/topics';
 import CommunitiesController from './controllers/server/communities';
 import UserController from './controllers/server/user/index';
+import SearchCacheController from './controllers/server/search_cache';
 import WebWalletController from './controllers/app/web_wallets';
 
 export enum ApiStatus {
@@ -54,7 +55,7 @@ export interface IApp {
   wallets: WebWalletController;
 
   recentActivity: RecentActivityController;
-  searchCache: any;
+  searchCache: SearchCacheController;
 
   // XXX: replace this with some app.chain helper
   activeChainId(): string;
@@ -120,7 +121,7 @@ const app: IApp = {
 
   recentActivity: new RecentActivityController(),
 
-  searchCache: {},
+  searchCache: new SearchCacheController(),
 
   activeChainId: () => app.chain?.id,
   activeCommunityId: () => app.community?.meta.id,
