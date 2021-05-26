@@ -4,21 +4,15 @@ import m from 'mithril';
 import { Tag } from 'construct-ui';
 
 import app from 'state';
-import { CWUser, CWProject } from 'models/CWProtocol';
 
-export interface CWProjectWithParticipants extends CWProject {
-  backers: Array<CWUser>;
-  curators: Array<CWUser>;
-  threadId?: string;
-}
+import { CWProject } from 'models/CWProtocol';
 
-
-const ProjectCard: m.Component<{project: CWProjectWithParticipants}> = {
+const ProjectCard: m.Component<{project: CWProject}> = {
   view: (vnode) => {
     const { project } = vnode.attrs;
-
-    const thredLink = `/${app.activeChainId()}/proposal/discussion/${project.threadId}`; // proposal => project
-    const projectLink = `/${app.activeCommunityId()}/project/${project.projectHash}`;
+    console.log('====>project', project);
+    // const thredLink = `/${app.activeChainId()}/proposal/discussion/${project.threadId}`; // proposal => project
+    const projectLink = `/${app.activeChainId()}/project/${project.projectHash}`;
     const bgColor = project.status === 'In Progress' ? 'blue' : (project.status === 'Successed') ? 'green' : 'red';
     const totalFundingText = `Total Funding: ${project.totalFunding}Ether`;
     
@@ -45,15 +39,16 @@ const ProjectCard: m.Component<{project: CWProjectWithParticipants}> = {
       m('.project-card-bottom', {
         onclick: (e) => {
           e.preventDefault();
-          if (project.threadId) {
-            m.route.set(thredLink);
-          }
+          // if (project.threadId) {
+          //   m.route.set(thredLink);
+          // }
         }
       }, [
-        // thread link
-        project.threadId ? m('.project-thread-link', [
-          m('a', { href: thredLink }, 'Go to thread'),
-        ]) : m('.no-linked-thread', 'No linked thread'),
+        // // thread link
+        // project.threadId ? m('.project-thread-link', [
+        //   m('a', { href: thredLink }, 'Go to thread'),
+        // ]) : m('.no-linked-thread', 'No linked thread'),
+        m('.no-linked-thread', 'No linked thread')
       ]),
     ]);
   }

@@ -1,10 +1,10 @@
 import 'pages/commonwealth/projects.scss';
 
-import { Input, TextArea, Form, FormLabel, FormGroup, Button, Grid, Col, Checkbox } from 'construct-ui';
+import { Input, FormGroup, Button } from 'construct-ui';
 import m from 'mithril';
 import app from 'state';
 
-import { CWProjectWithParticipants } from 'views/components/project_card';
+import { CWProject } from 'models/CWProtocol';
 
 const InProgressActionModule: m.Component<{callback: (isBack: boolean) => void}, {}> = {
   view: (vnode) => {
@@ -71,7 +71,7 @@ const FailedActionModule: m.Component<{callback: () => void}, {}> = {
   }
 }
 
-const ActionPage: m.Component<{project: CWProjectWithParticipants, protocol: any}, {amount: any, error: string}> = {
+const ActionPage: m.Component<{project: CWProject, protocol: any}, {amount: any, error: string}> = {
   oncreate: (vnode) => {
     vnode.state.error = '';
     vnode.state.amount = 0;
@@ -88,7 +88,7 @@ const ActionPage: m.Component<{project: CWProjectWithParticipants, protocol: any
     return m('.col-lg-4 .action-area', [
       m('.action-title', [
         m('span.amount', `${project.totalFunding} / ${project.threshold} `),
-        m('span.coin', project.acceptedToken === '0x01' ? 'Ether' : 'ERC20 Token')
+        m('span.coin', project.acceptedToken === '0x0000000000000000000000000000000000000000' ? 'Ether' : 'ERC20 Token')
       ]),
       m('.project-progress', [
         m('.project-progress-bar', [
