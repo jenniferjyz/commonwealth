@@ -1,6 +1,7 @@
 import m from 'mithril';
 import { Input, TextArea, Form, FormLabel, FormGroup, Button, Grid, Col, Checkbox } from 'construct-ui';
 import BN from 'bn.js';
+import { utils } from 'ethers';
 
 import 'pages/new_proposal_page.scss';
 
@@ -10,8 +11,6 @@ import PageLoading from 'views/pages/loading';
 import app from 'state';
 
 const floatRegex = /^[0-9]*\.?[0-9]*$/;
-
-
 
 const NewProjectForm = {
   form: {
@@ -127,18 +126,12 @@ const NewProjectForm = {
                 disabled: submitting,
                 name: 'threshold',
                 autofocus: true,
-                placeholder: 'Up to 4 digits after the decimal point',
+                placeholder: '',
                 autocomplete: 'off',
                 oninput: (e) => {
                   const result = (e.target as any).value;
                   if (floatRegex.test(result)) {
-                    const multiplier = 10000;
-                    const decimal = new BN(10).pow(new BN(18));
-
-                    const smallNum = Math.floor(parseFloat(result) * multiplier);
-                    const bigNum = (new BN(smallNum)).mul(decimal).div(new BN(multiplier));
-
-                    vnode.state.form.threshold = bigNum;
+                    vnode.state.form.threshold = utils.parseEther(result);
                     vnode.state.error = undefined;
                   } else {
                     vnode.state.form.threshold = undefined;
@@ -194,16 +187,25 @@ const NewProjectForm = {
               label: submitting ? 'Createing now' : 'Create a new Project',
               onclick: async(e) => {
                 e.preventDefault();
-                const projectData = {
-                  name: vnode.state.form.name,
-                  description: vnode.state.form.description,
-                  address: app.user.activeAccount.address,
-                  beneficiary: vnode.state.form.beneficiary,
-                  threshold: vnode.state.form.threshold,
-                  curatorFee: vnode.state.form.curatorFee,
-                  deadline: vnode.state.form.deadline,
+
+                if (vnode.state.form.threshold.toString()  === new BN(0).toString()) {
+                  vnode.state.error = {
+                    message: 'Can not be zero',
+                    id: 'threshold'
+                  };
+                  m.redraw();
+                } else {
+                  const projectData = {
+                    name: vnode.state.form.name,
+                    description: vnode.state.form.description,
+                    address: app.user.activeAccount.address,
+                    beneficiary: vnode.state.form.beneficiary,
+                    threshold: vnode.state.form.threshold,
+                    curatorFee: vnode.state.form.curatorFee,
+                    deadline: vnode.state.form.deadline,
+                  }
+                  vnode.attrs.callback(projectData)
                 }
-                vnode.attrs.callback(projectData)
               },
               tabindex: 4,
               type: 'submit',
@@ -236,9 +238,10 @@ const NewProjectPage: m.Component<{ type }, { submitting: boolean, createError: 
           callback: async(projectData: any) => {
             const author = app.user.activeAccount.address;
             vnode.state.submitting = true;
-            let res: any;
+
+            let txSuccessed = false;
             try {
-              res = await protocol.createProject(
+              txSuccessed = await protocol.createProject(
                 projectData.name,
                 projectData.description,
                 author,
@@ -247,14 +250,11 @@ const NewProjectPage: m.Component<{ type }, { submitting: boolean, createError: 
                 parseFloat(projectData.curatorFee),
                 parseFloat(projectData.deadline),
               );
-            } catch(err) {
-              vnode.state.createError = err;
+            } catch {
+              txSuccessed = false;
             }
-            if (res.status === 'success') {
-              vnode.state.createError = '';
-            } else {
-              vnode.state.createError = vnode.state.createError !== '' ? vnode.state.createError : 'Failed to create this project';
-            }
+
+            vnode.state.createError = txSuccessed ? '' : 'Failed to create this project';
             vnode.state.submitting = false;
             m.redraw();
           },

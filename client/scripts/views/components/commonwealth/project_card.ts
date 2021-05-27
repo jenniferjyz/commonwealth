@@ -1,20 +1,22 @@
-import 'components/project_card.scss';
+import 'components/commonwealth/project_card.scss';
 
+import { utils } from 'ethers';
 import m from 'mithril';
 import { Tag } from 'construct-ui';
 
 import app from 'state';
-
 import { CWProject } from 'models/CWProtocol';
 
 const ProjectCard: m.Component<{project: CWProject}> = {
   view: (vnode) => {
     const { project } = vnode.attrs;
-    console.log('====>project', project);
+
     // const thredLink = `/${app.activeChainId()}/proposal/discussion/${project.threadId}`; // proposal => project
     const projectLink = `/${app.activeChainId()}/project/${project.projectHash}`;
     const bgColor = project.status === 'In Progress' ? 'blue' : (project.status === 'Successed') ? 'green' : 'red';
-    const totalFundingText = `Total Funding: ${project.totalFunding}Ether`;
+
+    const totalFunding = utils.formatEther(project.totalFunding.asBN.toString());
+    const totalFundingText = `Total Funding: ${totalFunding} Ether`;
     
     return m('.ProjectCard', [
       m('.project-card-top', {

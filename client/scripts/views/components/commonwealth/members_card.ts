@@ -1,9 +1,9 @@
-import 'pages/commonwealth/projects.scss';
+import 'components/commonwealth/members_card.scss';
 
 import m from 'mithril';
 
+import app from 'state';
 import { CWUser, CWProject } from 'models/CWProtocol';
-
 
 
 const UserComp: m.Component<{user: CWUser, project: CWProject}> = {
@@ -18,13 +18,28 @@ const UserComp: m.Component<{user: CWUser, project: CWProject}> = {
   }
 }
 
-const MembersModule: m.Component<{project: CWProject}, {}> = {
+const MembersModule: m.Component<{project: CWProject}, {initalized: boolean, backers: any[], curators: any[]}> = {
+  oncreate: async (vnode) => {
+    if (!vnode.state.initalized) {
+      if (!app.chain || !(app.chain as any).protocol) {
+        return;
+      }
+      vnode.state.backers = await (app.chain as any).protocol.getTokenHolders(vnode.attrs.project.bToken);
+      vnode.state.curators = await (app.chain as any).protocol.getTokenHolders(vnode.attrs.project.cToken);
+      vnode.state.initalized = true;
+      m.redraw();
+    }
+  },
   view: (vnode) => {
     const { project } = vnode.attrs;
-    const backersContent = project.backers.map((backer) => m(UserComp, { user: backer, project }));
-    const curatorsContent = project.curators.map((curator) => m(UserComp, { user: curator, project }));
+    
+    const backers = [];
+    const curators = [];
 
-    return m('.row .members-area', [
+    const backersContent = backers.map((backer) => m(UserComp, { user: backer, project }));
+    const curatorsContent = curators.map((curator) => m(UserComp, { user: curator, project }));
+
+    return m('.row .members-card', [
       m('.col-lg-6', [
         m('.title', 'Backers'),
         backersContent,
