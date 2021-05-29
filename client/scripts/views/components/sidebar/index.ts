@@ -77,7 +77,7 @@ const SidebarQuickSwitcher: m.Component<{}> = {
         },
       }),
       m(CommunitySelector),
-      starredCommunities.map((item) => m(SidebarQuickSwitcherItem, { item, size })),
+      m('.sidebarList', [ starredCommunities.map((item) => m(SidebarQuickSwitcherItem, { item, size })),])
     ]);
   }
 };
